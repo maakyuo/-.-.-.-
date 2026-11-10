@@ -12,22 +12,22 @@ public class GifWallpaperService extends WallpaperService {
  public static class BottomLock extends GifWallpaperService {protected int slot(){return 3;}}
  @Override public Engine onCreateEngine(){return new GifEngine(slot());}
  class GifEngine extends Engine {
-  final Handler handler=new Handler(Looper.getMainLooper());final int slot;Movie movie;boolean visible;long start;long lastReload;
+  final Handler handler=new Handler(Looper.getMainLooper());final int slot;Movie movie;Bitmap bitmap;boolean visible;long start;long lastReload;
   final Runnable draw=new Runnable(){public void run(){render();}};
   GifEngine(int s){slot=s;load();}
-  int actualSlot(){int displayId=getDisplayContext().getDisplay().getDisplayId();return displayId==android.view.Display.DEFAULT_DISPLAY?slot:(slot%2==0?2:3);}
-  void load(){try(FileInputStream in=openFileInput("wallpaper"+actualSlot()+".gif")){ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buf=new byte[16384];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);byte[] bytes=out.toByteArray();movie=Movie.decodeByteArray(bytes,0,bytes.length);}catch(Exception e){movie=null;}start=0;lastReload=SystemClock.uptimeMillis();}
+  int actualSlot(){int displayId=getDisplayContext().getDisplay().getDisplayId();return displayId==android.view.Display.DEFAULT_DISPLAY?0:1;}
+  void load(){bitmap=null;movie=null;try(FileInputStream in=openFileInput("wallpaper"+actualSlot()+".img")){ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buf=new byte[16384];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);byte[] bytes=out.toByteArray();movie=Movie.decodeByteArray(bytes,0,bytes.length);if(movie==null)bitmap=BitmapFactory.decodeByteArray(bytes,0,bytes.length);}catch(Exception e){movie=null;}start=0;lastReload=SystemClock.uptimeMillis();}
   void render(){handler.removeCallbacks(draw);if(!visible)return;
    if(SystemClock.uptimeMillis()-lastReload>3000)loadIfChanged();
-   if(movie==null){handler.postDelayed(draw,500);return;}
+   if(movie==null&&bitmap==null){handler.postDelayed(draw,500);return;}
    Canvas canvas=null;SurfaceHolder holder=getSurfaceHolder();
-   try{canvas=holder.lockCanvas();if(canvas!=null){canvas.drawColor(Color.BLACK);int w=canvas.getWidth(),h=canvas.getHeight();int mw=Math.max(1,movie.width()),mh=Math.max(1,movie.height());int mode=getSharedPreferences("MainActivity",0).getInt("mode"+actualSlot(),0);float zoom=getSharedPreferences("MainActivity",0).getInt("zoom"+actualSlot(),100)/100f;
+   try{canvas=holder.lockCanvas();if(canvas!=null){canvas.drawColor(Color.BLACK);int w=canvas.getWidth(),h=canvas.getHeight();int mw=Math.max(1,movie!=null?movie.width():bitmap.getWidth()),mh=Math.max(1,movie!=null?movie.height():bitmap.getHeight());int mode=getSharedPreferences("MainActivity",0).getInt("mode"+actualSlot(),0);float zoom=getSharedPreferences("MainActivity",0).getInt("zoom"+actualSlot(),100)/100f;
     float sx,sy;if(mode==2){sx=w/(float)mw*zoom;sy=h/(float)mh*zoom;}else{float factor=mode==1?Math.min(w/(float)mw,h/(float)mh):Math.max(w/(float)mw,h/(float)mh);sx=sy=factor*zoom;}
-    canvas.save();canvas.translate((w-mw*sx)/2,(h-mh*sy)/2);canvas.scale(sx,sy);if(start==0)start=SystemClock.uptimeMillis();int duration=movie.duration();if(duration<=0)duration=1000;movie.setTime((int)((SystemClock.uptimeMillis()-start)%duration));movie.draw(canvas,0,0);canvas.restore();
-   }}catch(Exception ignored){}finally{if(canvas!=null)holder.unlockCanvasAndPost(canvas);}handler.postDelayed(draw,33);
+    canvas.save();canvas.translate((w-mw*sx)/2,(h-mh*sy)/2);canvas.scale(sx,sy);if(movie!=null){if(start==0)start=SystemClock.uptimeMillis();int duration=movie.duration();if(duration<=0)duration=1000;movie.setTime((int)((SystemClock.uptimeMillis()-start)%duration));movie.draw(canvas,0,0);}else canvas.drawBitmap(bitmap,0,0,null);canvas.restore();
+   }}catch(Exception ignored){}finally{if(canvas!=null)holder.unlockCanvasAndPost(canvas);}handler.postDelayed(draw,movie!=null?33:500);
   }
   long lastModified=-1;
-  void loadIfChanged(){File file=getFileStreamPath("wallpaper"+actualSlot()+".gif");long modified=file.exists()?file.lastModified():0;if(modified!=lastModified){lastModified=modified;load();}else lastReload=SystemClock.uptimeMillis();}
+  void loadIfChanged(){File file=getFileStreamPath("wallpaper"+actualSlot()+".img");long modified=file.exists()?file.lastModified():0;if(modified!=lastModified){lastModified=modified;load();}else lastReload=SystemClock.uptimeMillis();}
   @Override public void onVisibilityChanged(boolean v){visible=v;if(v){load();render();}else handler.removeCallbacks(draw);}
   @Override public void onSurfaceChanged(SurfaceHolder h,int f,int w,int ht){super.onSurfaceChanged(h,f,w,ht);render();}
   @Override public void onDestroy(){visible=false;handler.removeCallbacks(draw);super.onDestroy();}
