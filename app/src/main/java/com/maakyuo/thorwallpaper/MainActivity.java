@@ -33,13 +33,15 @@ public class MainActivity extends Activity {
   if(mime==null)mime=data.getType();
   boolean video=mime!=null&&mime.startsWith("video/");
   if(!video){String name=uri.toString().toLowerCase(java.util.Locale.ROOT);video=name.endsWith(".mp4")||name.endsWith(".webm")||name.endsWith(".3gp");}
-  String filename="wallpaper"+selected+(video?".video":".img");
-  try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=openFileOutput(filename,MODE_PRIVATE)){
+  final int slot=selected;final boolean isVideo=video;
+  String filename="wallpaper"+slot+(isVideo?".video":".img");
+  status.setText("파일 복사 중... 동영상은 시간이 걸릴 수 있습니다.");
+  new Thread(()->{try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=openFileOutput(filename,MODE_PRIVATE)){
    if(in==null)throw new IOException("선택한 파일을 열 수 없습니다");
    byte[] buf=new byte[65536];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);
    out.flush();
-   getPreferences(0).edit().putBoolean("video"+selected,video).apply();
-   status.setText(LABELS[selected]+(video?" 동영상":" 이미지/GIF")+" 저장 완료. 적용 버튼을 눌러주세요.");
-  }catch(Exception e){status.setText("파일 저장 실패: "+e.getMessage());}
+   getPreferences(0).edit().putBoolean("video"+slot,isVideo).commit();
+   runOnUiThread(()->status.setText(LABELS[slot]+(isVideo?" 동영상":" 이미지/GIF")+" 저장 완료. 적용 버튼을 눌러주세요."));
+  }catch(Exception e){runOnUiThread(()->status.setText("파일 저장 실패: "+e.getMessage()));}}).start();
  }
 }
