@@ -15,7 +15,8 @@ public class GifWallpaperService extends WallpaperService {
   final Handler handler=new Handler(Looper.getMainLooper());final int slot;Movie movie;boolean visible;long start;long lastReload;
   final Runnable draw=new Runnable(){public void run(){render();}};
   GifEngine(int s){slot=s;load();}
-  int actualSlot(){int displayId=getDisplayContext().getDisplay().getDisplayId();return displayId==android.view.Display.DEFAULT_DISPLAY?slot:(slot%2==0?2:3);}\n  void load(){try(FileInputStream in=openFileInput("wallpaper"+actualSlot()+".gif")){ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buf=new byte[16384];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);byte[] bytes=out.toByteArray();movie=Movie.decodeByteArray(bytes,0,bytes.length);}catch(Exception e){movie=null;}start=0;lastReload=SystemClock.uptimeMillis();}
+  int actualSlot(){int displayId=getDisplayContext().getDisplay().getDisplayId();return displayId==android.view.Display.DEFAULT_DISPLAY?slot:(slot%2==0?2:3);}
+  void load(){try(FileInputStream in=openFileInput("wallpaper"+actualSlot()+".gif")){ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buf=new byte[16384];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);byte[] bytes=out.toByteArray();movie=Movie.decodeByteArray(bytes,0,bytes.length);}catch(Exception e){movie=null;}start=0;lastReload=SystemClock.uptimeMillis();}
   void render(){handler.removeCallbacks(draw);if(!visible)return;
    if(SystemClock.uptimeMillis()-lastReload>3000)loadIfChanged();
    if(movie==null){handler.postDelayed(draw,500);return;}
